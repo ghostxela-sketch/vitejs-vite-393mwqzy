@@ -2209,6 +2209,22 @@ export default function App() {
   const { series: liveSeries, news: liveNews, systemCtx: liveCtx } = useLiveSeries();
   const isPro = user?.plan === "pro";
 
+// Refresh user plan from backend on mount
+useEffect(() => {
+  if (user?.email) {
+    fetch(`${RENDER}/api/auth/subscription/${user.email}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.plan && data.plan !== user.plan) {
+          const updated = { ...user, plan: data.plan };
+          setUser(updated);
+          saveUser(updated);
+        }
+      })
+      .catch(() => {});
+  }
+}, [user?.email]);
+
   const handleGlobalUpgrade = async () => {
     try {
       const res = await fetch(`${RENDER}/api/stripe/create-checkout`, {
