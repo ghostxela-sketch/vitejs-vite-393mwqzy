@@ -1011,25 +1011,37 @@ function getAllUsers(): Record<string, User & { password: string }> {
 function saveUser(user: User) { localStorage.setItem(AUTH_KEY, JSON.stringify(user)); }
 function logout() { localStorage.removeItem(AUTH_KEY); }
 
-function register(name: string, email: string, password: string): User | string {
-  const users = getAllUsers();
-  if (users[email]) return "Email already registered";
-  const user: User = { id: Date.now().toString(), email, name, plan: "free", createdAt: new Date().toISOString(), savedProps: [], alerts: [] };
-  users[email] = { ...user, password };
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  saveUser(user);
-  return user;
-}
-function login(email: string, password: string): User | string {
-  const users = getAllUsers();
-  const u = users[email];
-  if (!u) return "No account found with that email";
-  if (u.password !== password) return "Incorrect password";
-  const { password: _, ...user } = u;
-  saveUser(user);
-  return user;
+async function register(name: string, email: string, password: string): Promise<User | string> {
+  try {
+    const res = await fetch(`${RENDER}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) return data.error || "Registration failed";
+    saveUser(data.user);
+    return data.user;
+  } catch {
+    return "Connection error - please try again";
+  }
 }
 
+async function login(email: string, password: string): Promise<User | string> {
+  try {
+    const res = await fetch(`${RENDER}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) return data.error || "Login failed";
+    saveUser(data.user);
+    return data.user;
+  } catch {
+    return "Connection error - please try again";
+  }
+}
 // ── Auth Page ─────────────────────────────────
 function AuthPage({ onAuth }: { onAuth: (user: User) => void }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
